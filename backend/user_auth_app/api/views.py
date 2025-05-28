@@ -1,15 +1,16 @@
-from rest_framework import generics
+from rest_framework import generics, status
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
+from rest_framework.authtoken.models import Token
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.response import Response
+
 from user_auth_app.models import UserProfile
 from .serializers import (
     UserProfileSerializer,
     RegistrationSerializer,
     LoginSerializer
     )
-from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
-from rest_framework.authtoken.models import Token
-from rest_framework.response import Response
-from rest_framework.authtoken.views import ObtainAuthToken
 
 class UserProfileList(generics.ListCreateAPIView):
     queryset = UserProfile.objects.all()
@@ -34,10 +35,9 @@ class RegistrationView(APIView):
                 'fullname': saved_account.username,
                 'email': saved_account.email
             }
-        else:
-            data = serializer.errors
-
-        return Response(data)
+            return Response(data, status=status.HTTP_201_CREATED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class CustomLoginView(ObtainAuthToken):
     permission_classes = [AllowAny]
@@ -56,7 +56,6 @@ class CustomLoginView(ObtainAuthToken):
                 'email': user.email,
                 'user_id': user.id
             }
-        else:
-            data = serializer.errors
-
-        return Response(data)
+            return Response(data, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
