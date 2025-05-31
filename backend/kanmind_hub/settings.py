@@ -55,11 +55,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+CORS_ALLOW_ALL_ORIGINS = False
+
 CORS_ALLOWED_ORIGINS = [
-    # Lokal / Arbeitsumgebung
-    "http://127.0.0.1:5500",
-    # Lokal / Arbeitsumgebung
-    "http://localhost:5500",
+    "http://127.0.0.1:5500",                                # Lokal / Arbeitsumgebung
+    "http://localhost:5500",                                # Lokal / Arbeitsumgebung
     "https://philip-baumgaertner.developerakademie.net",    # Domain der DA
     "https://philip-baumgaertner.net",                      # eigene Domain
 ]

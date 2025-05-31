@@ -24,8 +24,8 @@ urlpatterns = [
     path('api/registration/',   RegistrationView.as_view(),     name='registration'),
     path('api/login/',          CustomLoginView.as_view(),      name='login'),
 
-    # path('api/',            include('kanmind_app.api.urls')),     # später noch hinzufügen
     path('api/',            include('user_auth_app.api.urls')),
-    # path('api/auth/',       include('rest_framework.urls')),
     path('api/auth/',       include('user_auth_app.api.urls')),
+    # path('api/auth/',       include('rest_framework.urls')),
+    path('api/',            include('kanmind_app.api.urls')),
 ]
