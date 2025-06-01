@@ -2,7 +2,7 @@ from django.shortcuts            import get_object_or_404
 from django.db.models           import Count, Q
 from django.contrib.auth.models import User
 from rest_framework             import generics, permissions, status
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError, NotFound
 from rest_framework.views       import APIView
 from rest_framework.response    import Response
 
@@ -149,18 +149,82 @@ class TasksReviewingListAPIView(generics.ListAPIView):
 
 class TaskListCreateAPIView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class  = TaskCreateUpdateSerializer
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return TaskCreateUpdateSerializer
+        return TaskListSerializer
 
     def get_queryset(self):
         user = self.request.user
         return Task.objects.filter(
-            Q(board__owner=user) | Q(board__members=user)
+            Q(board__owner=user) |
+            Q(board__members=user) |
+            Q(assignee=user) |
+            Q(reviewer=user)
         ).annotate(
-            comments_count=Count('comments')
+            comments_count=Count('comments', distinct=True)
         )
 
-    def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+    #def create(self, request, *args, **kwargs):
+        #create_serializer = self.get_serializer(data=request.data)
+        #create_serializer.is_valid(raise_exception=True)
+        #
+        #board_obj = get_object_or_404(Board, pk=create_serializer.validated_data['board'].id)
+        #user = request.user
+        #if not (board_obj.owner == user or user in board_obj.members.all()):
+        #    raise PermissionDenied(detail="Du musst Mitglied des Boards sein, um eine Task anzulegen.")
+        #
+        #assignee_user = create_serializer.validated_data.get('assignee', None)
+        #if assignee_user and not (assignee_user == board_obj.owner or assignee_user in board_obj.members.all()):
+        #    raise PermissionDenied(detail="Assignee muss Mitglied des Boards sein.")
+        #reviewer_user = create_serializer.validated_data.get('reviewer', None)
+        #if reviewer_user and not (reviewer_user == board_obj.owner or reviewer_user in board_obj.members.all()):
+        #    raise PermissionDenied(detail="Reviewer muss Mitglied des Boards sein.")
+        #
+        #task_obj = create_serializer.save()
+        #
+        #task_with_counts = Task.objects.filter(pk=task_obj.pk).annotate(
+        #    comments_count=Count('comments', distinct=True)
+        #).first()
+        #output_serializer = TaskListSerializer(task_with_counts)
+        #return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
+    def create(self, request, *args, **kwargs):
+        board_id = request.data.get('board')
+        if board_id is None:
+            raise ValidationError({"board": ["This field is required."]})
+
+        try:
+            board_obj = Board.objects.get(pk=board_id)
+        except Board.DoesNotExist:
+            raise NotFound(detail="Board not found.")
+
+        user = request.user
+        if not (board_obj.owner == user or user in board_obj.members.all()):
+            raise PermissionDenied(detail="Du musst Mitglied des Boards sein, um eine Task anzulegen.")
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        assignee_user = serializer.validated_data.get('assignee', None)
+        if assignee_user and not (assignee_user == board_obj.owner or assignee_user in board_obj.members.all()):
+            raise PermissionDenied(detail="Assignee muss Mitglied des Boards sein.")
+
+        reviewer_user = serializer.validated_data.get('reviewer', None)
+        if reviewer_user and not (reviewer_user == board_obj.owner or reviewer_user in board_obj.members.all()):
+            raise PermissionDenied(detail="Reviewer muss Mitglied des Boards sein.")
+
+        # task_obj = serializer.save(board=board_obj)
+        task_obj = serializer.save()
+
+        task_with_counts = Task.objects.filter(pk=task_obj.pk).annotate(
+            comments_count=Count('comments', distinct=True)
+        ).first()
+        output_serializer = TaskListSerializer(task_with_counts)
+
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
 
 class TaskRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]

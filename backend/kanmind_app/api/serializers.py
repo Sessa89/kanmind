@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.db.models import Count
 from kanmind_app.models import Board, Task, Comment
+from rest_framework.exceptions import NotFound
 
 class UserMinimalSerializer(serializers.ModelSerializer):
     fullname = serializers.SerializerMethodField()
@@ -41,16 +42,16 @@ class BoardCreateSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'members']
 
 class TaskListSerializer(serializers.ModelSerializer):
-    assignee       = UserMinimalSerializer(read_only=True)
-    reviewer       = UserMinimalSerializer(read_only=True)
-    comments_count = serializers.IntegerField()
+    board           = serializers.IntegerField(source='board.id', read_only=True)
+    assignee        = UserMinimalSerializer(read_only=True)
+    reviewer        = UserMinimalSerializer(read_only=True)
+    comments_count  = serializers.IntegerField()
 
     class Meta:
         model  = Task
         fields = [
-            'id', 'title', 'description',
-            'status', 'priority', 'assignee',
-            'reviewer', 'due_date', 'comments_count'
+            'id', 'board', 'title', 'description', 'status',
+            'priority', 'assignee', 'reviewer', 'due_date', 'comments_count'
         ]
 
 class BoardDetailSerializer(serializers.ModelSerializer):
@@ -74,6 +75,7 @@ class BoardDetailSerializer(serializers.ModelSerializer):
         return TaskListSerializer(qs, many=True).data
 
 class TaskCreateUpdateSerializer(serializers.ModelSerializer):
+    board    = serializers.IntegerField(write_only=True)
     assignee_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(),
         source='assignee',
@@ -90,21 +92,36 @@ class TaskCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Task
         fields = [
-            'id', 'board', 'title', 'description',
-            'status', 'priority',
-            'assignee_id', 'reviewer_id',
-            'due_date'
+            'id', 'board', 'title', 'description', 'status',
+            'priority', 'assignee_id', 'reviewer_id', 'due_date'
         ]
 
+    #def create(self, validated_data):
+    #    request_user = self.context['request'].user
+    #
+    #    return Task.objects.create(
+    #        created_by=request_user,
+    #        **validated_data
+    #    )
+    
     def create(self, validated_data):
-        request_user = self.context['request'].user
+        board_pk = validated_data.pop('board')
+        try:
+            board_obj = Board.objects.get(pk=board_pk)
+        except Board.DoesNotExist:
+            raise NotFound(detail="Board not found.")
 
+        validated_data['board'] = board_obj
+
+        request_user = self.context['request'].user
         return Task.objects.create(
             created_by=request_user,
             **validated_data
         )
-    
-        # return super().create(validated_data)
+
+
+    def update(self, instance, validated_data):
+        return super().update(instance, validated_data)
 
 class CommentSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
