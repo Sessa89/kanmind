@@ -32,7 +32,7 @@ class Task(models.Model):
     assignee    = models.ForeignKey(User, related_name='assigned_tasks', on_delete=models.SET_NULL, null=True, blank=True)
     reviewer    = models.ForeignKey(User, related_name='review_tasks', on_delete=models.SET_NULL, null=True, blank=True)
     due_date    = models.DateField(null=True, blank=True)
-    created_by  = models.ForeignKey(User, related_name='created_tasks', on_delete=models.CASCADE, null=False, blank=False)
+    created_by  = models.ForeignKey(User, related_name='created_tasks', on_delete=models.CASCADE, null=True, blank=False)
 
     def __str__(self):
         return f"{self.title} ({self.status})"

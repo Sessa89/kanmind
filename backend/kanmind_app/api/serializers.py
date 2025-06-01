@@ -26,6 +26,19 @@ class BoardListSerializer(serializers.ModelSerializer):
             'tasks_to_do_count','tasks_high_prio_count','owner_id'
         ]
 
+class BoardCreateSerializer(serializers.ModelSerializer):
+    members = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        many=True,
+        required=False,
+        allow_empty=True,
+        write_only=True
+    )
+
+    class Meta:
+        model  = Board
+        fields = ['id', 'title', 'members']
+
 class TaskListSerializer(serializers.ModelSerializer):
     assignee       = UserMinimalSerializer(read_only=True)
     reviewer       = UserMinimalSerializer(read_only=True)

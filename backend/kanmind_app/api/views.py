@@ -7,7 +7,7 @@ from rest_framework.response    import Response
 
 from kanmind_app.models     import Board, Task, Comment
 from .serializers import (
-    BoardListSerializer, BoardDetailSerializer,
+    BoardListSerializer, BoardCreateSerializer, BoardDetailSerializer,
     TaskListSerializer, TaskCreateUpdateSerializer,
     CommentSerializer, CommentCreateSerializer
 )
@@ -42,6 +42,10 @@ class BoardListCreateAPIView(generics.ListCreateAPIView):
     def get_serializer_class(self):
         if self.request.method == 'GET' and 'id' in self.request.query_params:
             return BoardDetailSerializer
+        
+        if self.request.method == 'POST':
+            return BoardCreateSerializer
+
         return BoardListSerializer
 
     def get_queryset(self):
@@ -63,17 +67,21 @@ class BoardListCreateAPIView(generics.ListCreateAPIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return super().list(request, *args, **kwargs)
 
-    def perform_create(self, serializer):
-        board = serializer.save(owner=self.request.user)
-        board.members.add(self.request.user)
+    def create(self, request, *args, **kwargs):
+        create_serializer = self.get_serializer(data=request.data)
+        create_serializer.is_valid(raise_exception=True)
+        board_obj = create_serializer.save(owner=request.user)
+        board_obj.members.add(request.user)
 
-        members = self.request.data.get('members', [])
-        for member_id in members:
-            try:
-                usr = User.objects.get(pk=member_id)
-                board.members.add(usr)
-            except User.DoesNotExist:
-                pass
+        members_data = create_serializer.validated_data.get('members', [])
+        for usr in members_data:
+            board_obj.members.add(usr)
+
+        full_qs = self.get_queryset().filter(id=board_obj.id)
+        board_with_counts = full_qs.first()
+
+        output_serializer = BoardListSerializer(board_with_counts)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
 
 class BoardRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -89,9 +97,22 @@ class BoardRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
 
     def perform_update(self, serializer):
         board = serializer.save()
-        members = self.request.data.get('members', None)
-        if members is not None:
-            board.members.set(members)
+        members_data = self.request.data.get('members', None)
+        if members_data is not None:
+            board.members.clear()
+            for member_id in members_data:
+                try:
+                    usr = User.objects.get(pk=member_id)
+                    board.members.add(usr)
+                except User.DoesNotExist:
+                    pass
+
+    def perform_destroy(self, instance):
+        user = self.request.user
+
+        if instance.owner != user:
+            raise permissions.PermissionDenied("Only the owner is able to delete this board.")
+        return super().perform_destroy(instance)
 
 class TasksAssignedToMeListAPIView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -186,9 +207,6 @@ class CommentDestroyAPIView(generics.DestroyAPIView):
 
 
 
-
-
-
 #class IsBoardMemberOrOwner(permissions.BasePermission):
 #    def has_object_permission(self, req, view, obj):
 #        return req.user == obj.owner or obj.members.filter(pk=req.user.pk).exists()
@@ -207,11 +225,3 @@ class CommentDestroyAPIView(generics.DestroyAPIView):
 #
 #    def get_queryset(self):
 #        return Task.objects.filter(assignee=self.request.user).annotate(comments_count=Count('comments'))
-
-
-
-
-
-
-
-
