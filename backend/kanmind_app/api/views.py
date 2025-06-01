@@ -225,7 +225,6 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
 
         return Response(output_serializer.data, status=status.HTTP_201_CREATED)
 
-
 class TaskRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class  = TaskCreateUpdateSerializer
@@ -240,7 +239,6 @@ class TaskRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
 
 class CommentListCreateAPIView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class  = CommentSerializer
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -252,18 +250,40 @@ class CommentListCreateAPIView(generics.ListCreateAPIView):
         task = get_object_or_404(Task, pk=task_id)
         user = self.request.user
         if not (task.board.owner == user or user in task.board.members.all()):
-            raise permissions.PermissionDenied("Not permitted to view comments.")
+            raise PermissionDenied("Not permitted to view comments.")
         return task.comments.all().order_by('created_at')
 
-    def perform_create(self, serializer):
-        task = get_object_or_404(Task, pk=self.kwargs['task_id'])
-        serializer.context.update({'task': task})
-        serializer.save()
+    #def perform_create(self, serializer):
+    #    task = get_object_or_404(Task, pk=self.kwargs['task_id'])
+    #    serializer.context.update({'task': task})
+    #    serializer.save()
+
+    def create(self, request, *args, **kwargs):
+        task_id = self.kwargs['task_id']
+
+        try:
+            task = Task.objects.get(pk=task_id)
+        except Task.DoesNotExist:
+            raise NotFound(detail="Task not found.")
+
+        user = request.user
+
+        if not (task.board.owner == user or user in task.board.members.all()):
+            raise PermissionDenied("Du musst Mitglied des Boards sein, um Kommentare hinzuzufügen.")
+
+        create_serializer = CommentCreateSerializer(data=request.data, context={'task': task, 'request': request})
+        create_serializer.is_valid(raise_exception=True)
+
+        comment_obj = create_serializer.save()
+
+        output_serializer = CommentSerializer(comment_obj)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
 
 class CommentDestroyAPIView(generics.DestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class  = CommentSerializer
+    serializer_class  = None
     lookup_url_kwarg  = 'comment_id'
+    lookup_field = 'pk'
 
     def get_queryset(self):
         task = get_object_or_404(Task, pk=self.kwargs['task_id'])
@@ -272,8 +292,9 @@ class CommentDestroyAPIView(generics.DestroyAPIView):
     def destroy(self, request, *args, **kwargs):
         comment = self.get_object()
         if comment.author != request.user:
-            raise permissions.PermissionDenied("Not allowed to delete this comment.")
-        return super().destroy(request, *args, **kwargs)
+            raise PermissionDenied("Not allowed to delete this comment.")
+        comment.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 
