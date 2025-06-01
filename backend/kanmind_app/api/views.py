@@ -2,6 +2,7 @@ from django.shortcuts            import get_object_or_404
 from django.db.models           import Count, Q
 from django.contrib.auth.models import User
 from rest_framework             import generics, permissions, status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.views       import APIView
 from rest_framework.response    import Response
 
@@ -91,8 +92,12 @@ class BoardRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     def get_object(self):
         obj = super().get_object()
         user = self.request.user
+        # if not (obj.owner == user or user in obj.members.all()):
+        #     raise permissions.PermissionDenied("Not a member of this board.")
+
         if not (obj.owner == user or user in obj.members.all()):
-            raise permissions.PermissionDenied("Not a member of this board.")
+            raise PermissionDenied("Not a member of this board.")
+
         return obj
 
     def perform_update(self, serializer):
@@ -110,8 +115,12 @@ class BoardRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     def perform_destroy(self, instance):
         user = self.request.user
 
+        # if instance.owner != user:
+        #     raise permissions.PermissionDenied("Only the owner is able to delete this board.")
+        
         if instance.owner != user:
-            raise permissions.PermissionDenied("Only the owner is able to delete this board.")
+            raise PermissionDenied("Only the owner is able to delete this board.")
+        
         return super().perform_destroy(instance)
 
 class TasksAssignedToMeListAPIView(generics.ListAPIView):

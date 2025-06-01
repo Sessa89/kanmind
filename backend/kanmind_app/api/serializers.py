@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from django.db.models import Count
 from kanmind_app.models import Board, Task, Comment
 
 class UserMinimalSerializer(serializers.ModelSerializer):
@@ -47,19 +48,30 @@ class TaskListSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Task
         fields = [
-            'id', 'board', 'title', 'description',
+            'id', 'title', 'description',
             'status', 'priority', 'assignee',
             'reviewer', 'due_date', 'comments_count'
         ]
 
 class BoardDetailSerializer(serializers.ModelSerializer):
-    owner   = UserMinimalSerializer(read_only=True)
-    members = UserMinimalSerializer(many=True, read_only=True)
-    tasks   = TaskListSerializer(many=True, read_only=True)
+    # owner   = UserMinimalSerializer(read_only=True)
+    owner_id = serializers.IntegerField(source='owner.id', read_only=True)
+    # members = UserMinimalSerializer(many=True, read_only=True)
+    members  = serializers.SerializerMethodField()
+    # tasks   = TaskListSerializer(many=True, read_only=True)
+    tasks    = serializers.SerializerMethodField()
 
     class Meta:
         model  = Board
-        fields = ['id', 'title', 'owner', 'members', 'tasks']
+        fields = ['id', 'title', 'owner_id', 'members', 'tasks']
+
+    def get_members(self, board_obj):
+        qs = board_obj.members.exclude(pk=board_obj.owner_id)
+        return UserMinimalSerializer(qs, many=True).data
+
+    def get_tasks(self, board_obj):
+        qs = board_obj.tasks.annotate(comments_count=Count('comments'))
+        return TaskListSerializer(qs, many=True).data
 
 class TaskCreateUpdateSerializer(serializers.ModelSerializer):
     assignee_id = serializers.PrimaryKeyRelatedField(
