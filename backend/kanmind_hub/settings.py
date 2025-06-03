@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from corsheaders.defaults import default_methods, default_headers
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -63,6 +64,29 @@ CORS_ALLOWED_ORIGINS = [
     "https://philip-baumgaertner.developerakademie.net",    # Domain der DA
     "https://philip-baumgaertner.net",                      # eigene Domain
 ]
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+CORS_PREFLIGHT_MAX_AGE = 86400
 
 ROOT_URLCONF = 'kanmind_hub.urls'
 
