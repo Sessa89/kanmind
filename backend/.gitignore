@@ -1,43 +1,6 @@
-# ───────────────────────────────────────────────────────
-# Byte‐compiled / übersetzte Dateien
-#__pycache__/
-#*.py[cod]
-#*$py.class
+__pycache__/
 
-# Django‐Migrationen (wer sie im Repo haben will, kann sie weglassen)
-#*/migrations/
-#!*/migrations/__init__.py
-
-# SQLite‐Datenbank
 /db.sqlite3
-# oder, wenn unter backend: /backend/db.sqlite3
 
-# Media‐Upload‐Ordner (falls ihr einen habt)
-#/media/
-
-# Environment‐Ordner oder virtuelle Umgebung
-#env/
-#venv/
-#.venv/
-#ENV/
-#env.bak/
-#venv.bak/
-
-# macOS HFS+ resource forks
-#.DS_Store
-
-# JetBrains IDEs (PyCharm etc.)
-#.idea/
-
-# VSCode‐Einstellungen
-#.vscode/
-
-# Logs
-#*.log
-#*.pot
-#*.mo
-
-# Node/Javascript (falls ihr Frontend-Build-Ordner habt)
-#/node_modules/
-#/dist/
-#/build/
+env/
+venv/

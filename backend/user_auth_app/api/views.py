@@ -13,17 +13,35 @@ from .serializers import (
     )
 
 class UserProfileList(generics.ListCreateAPIView):
+    """
+    API endpoint to list all user profiles or create a new profile.
+    GET:  returns a list of all UserProfile instances.
+    POST: creates a new UserProfile (requires authentication).
+    """
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
 
 class UserProfileDetail(generics.RetrieveUpdateDestroyAPIView):
+    """
+    API endpoint to retrieve, update, or delete a specific user profile.
+    GET:    retrieve a UserProfile by its ID.
+    PUT/PATCH: update a UserProfile (requires authentication).
+    DELETE: remove a UserProfile (requires authentication).
+    """
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
 
 class RegistrationView(APIView):
+    """
+    API endpoint for user registration.
+    POST: registers a new user account and returns an authentication token.
+    """
     permission_classes = [AllowAny]
 
     def post(self, request):
+        """
+        Validate input, create a new user, generate token, and respond.
+        """
         serializer = RegistrationSerializer(data=request.data)
 
         data = {}
@@ -40,10 +58,17 @@ class RegistrationView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class CustomLoginView(ObtainAuthToken):
+    """
+    API endpoint for user login using token authentication.
+    POST: validates credentials, returns token and basic user info.
+    """
     permission_classes = [AllowAny]
     serializer_class = LoginSerializer
 
     def post(self, request):
+        """
+        Validate credentials with LoginSerializer, create/get token, and respond.
+        """
         serializer = self.serializer_class(data=request.data, context={'request': request})
 
         data = {}

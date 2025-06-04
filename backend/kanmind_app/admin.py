@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from .models import Board, Task, Comment
 
 # Register your models here.
@@ -8,8 +9,8 @@ class BoardAdmin(admin.ModelAdmin):
     list_display = ('id', 'title', 'owner')
     search_fields = ('title', 'owner__username', 'owner__email')
     list_filter = ('owner',)
-    raw_id_fields = ('members',)      # zeigt Mitglieder per ID‐Lookup
-    filter_horizontal = ('members',)  # falls ManyToMany-Felder lieber als horizontale Box
+    raw_id_fields = ('members',)
+    filter_horizontal = ('members',)
 
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
