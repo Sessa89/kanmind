@@ -10,7 +10,8 @@ from kanmind_app.models import Board, Task, Comment
 from .serializers import (
     BoardListSerializer, BoardCreateSerializer, BoardDetailSerializer,
     TaskListSerializer, TaskCreateUpdateSerializer,
-    CommentSerializer, CommentCreateSerializer
+    CommentSerializer, CommentCreateSerializer,
+    BoardUpdateSerializer, TaskDetailSerializer
 )
 
 class EmailCheckAPIView(APIView):
@@ -148,6 +149,25 @@ class BoardRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
                 except User.DoesNotExist:
                     pass
 
+    def update(self, request, *args, **kwargs):
+        """
+        Partially or fully update a board instance:
+
+        - Fetch the existing board via get_object(), ensuring permissions.
+        - Validate incoming data against the serializer (partial if PATCH).
+        - Call perform_update() to apply changes (title and members).
+        - Re-fetch the updated board and serialize using BoardUpdateSerializer.
+        - Return serialized data with HTTP 200.
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        updated_board = self.get_object()
+        output_serializer = BoardUpdateSerializer(updated_board)
+        return Response(output_serializer.data, status=status.HTTP_200_OK)
+
     def perform_destroy(self, instance):
         """
         Only the owner may delete; else raise 403.
@@ -281,8 +301,37 @@ class TaskRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
         obj = super().get_object()
         user = self.request.user
         if not (obj.board.owner == user or user in obj.board.members.all()):
-            raise permissions.PermissionDenied("Not authorized to modify this task.")
+            raise PermissionDenied("Not authorized to modify this task.")
         return obj
+    
+    def update(self, request, *args, **kwargs):
+        """
+        Partially or fully update a Task instance:
+
+        - Fetch the existing Task via get_object(), enforcing board‐membership permissions.
+        - Validate incoming data using TaskCreateUpdateSerializer (allow partial if PATCH).
+        - Save changes to the Task (this updates title, description, status, priority, assignee, reviewer, due_date).
+        - Re‐query the updated Task and annotate its comments count.
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        updated_task = Task.objects.get(pk=instance.pk)
+
+        output_serializer = TaskDetailSerializer(updated_task)
+        return Response(output_serializer.data, status=status.HTTP_200_OK)
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Delete a Task instance. Only board members may delete a Task. Returns HTTP 204 on success.
+        """
+        task = self.get_object()
+        task.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class CommentListCreateAPIView(generics.ListCreateAPIView):
     """

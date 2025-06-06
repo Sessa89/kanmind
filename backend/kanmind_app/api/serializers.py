@@ -187,3 +187,43 @@ class CommentCreateSerializer(serializers.ModelSerializer):
         return Comment.objects.create(
             task=task, author=author, content=validated_data['content']
         )
+    
+class BoardUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer used for returning the updated Board instance after a PATCH request.
+    
+    This serializer produces exactly the fields required by the API specification:
+      - id: The unique identifier of the Board.
+      - title: The updated title of the Board.
+      - owner_data: Nested object containing the owner’s id, email, and fullname.
+      - members_data: List of nested objects for each member, each containing id, email, and fullname.
+    
+    It pulls `owner` and `members` from the Board model and serializes them using UserMinimalSerializer.
+    """
+    owner_data   = UserMinimalSerializer(source='owner', read_only=True)
+    members_data = UserMinimalSerializer(source='members', many=True, read_only=True)
+
+    class Meta:
+        model  = Board
+        fields = ['id', 'title', 'owner_data', 'members_data']
+
+class TaskDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer for returning a Task’s detail after update, without 'board' or 'comments_count'.
+    Includes nested 'assignee' and 'reviewer' objects.
+    """
+    assignee = UserMinimalSerializer(read_only=True)
+    reviewer = UserMinimalSerializer(read_only=True)
+
+    class Meta:
+        model = Task
+        fields = [
+            'id',
+            'title',
+            'description',
+            'status',
+            'priority',
+            'assignee',
+            'reviewer',
+            'due_date'
+        ]
